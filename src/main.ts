@@ -6,9 +6,14 @@ import { UserService } from './user/user.service';
 import { CreateUserDto } from './user/dto/create-user.dto';
 import { Role } from './user/entities/role.enum';
 import { ConfigService } from '@nestjs/config';
+import * as serverless from 'serverless-http';
+import { ExpressAdapter } from '@nestjs/platform-express';
+import * as express from 'express';
+
+const expressApp = express();
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create(AppModule, new ExpressAdapter(expressApp));
 
   const configService = app.get(ConfigService);
 
@@ -37,8 +42,6 @@ async function bootstrap() {
   app.useGlobalFilters(new HttpExceptionFilter());
 
   const userService = app.get(UserService);
-  
-
   const userEmail = configService.get<string>('defaultAdmin.email');
   const existingUser = await userService.findByEmail(userEmail);
 
@@ -55,6 +58,9 @@ async function bootstrap() {
     console.log('Inserted admin:', admin);
   }
 
-  await app.listen(3000);
+  await app.init();  // Cambia `listen` por `init` para funciones serverless
 }
+
 bootstrap();
+
+export const handler = serverless(expressApp);
