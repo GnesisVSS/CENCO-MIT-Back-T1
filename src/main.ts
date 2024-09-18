@@ -1,66 +1,35 @@
-import { NestFactory } from '@nestjs/core';
-import { AppModule } from './app.module';
-import { BadRequestException, ValidationPipe } from '@nestjs/common';
-import { HttpExceptionFilter } from './exceptionFilter/http-exception.filter';
-import { UserService } from './user/user.service';
-import { CreateUserDto } from './user/dto/create-user.dto';
-import { Role } from './user/entities/role.enum';
-import { ConfigService } from '@nestjs/config';
-import * as serverless from 'serverless-http';
-import { ExpressAdapter } from '@nestjs/platform-express';
-import * as express from 'express';
+// Este código es solo un ejemplo. Asegúrate de que tu main.js exporte la función handler correctamente.
+const { NestFactory } = require('@nestjs/core');
+const { AppModule } = require('./app.module');
 
-const expressApp = express();
+let cachedServer;
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule, new ExpressAdapter(expressApp));
+  if (!cachedServer) {
+    const app = await NestFactory.create(AppModule);
+    app.enableCors({
+      origin: '*', 
+      methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
+      credentials: true,
+    });
 
-  const configService = app.get(ConfigService);
-
-  app.enableCors({
-    origin: configService.get<string>('CORS_ORIGIN') || '*',
-    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
-    credentials: true,
-  });
-
-  app.useGlobalPipes(
-    new ValidationPipe({
-      whitelist: true,
-      forbidNonWhitelisted: true,
-      transform: true,
-      exceptionFactory: (errors) => {
-        return new BadRequestException(
-          errors.map((error) => ({
-            field: error.property,
-            errors: Object.values(error.constraints),
-          })),
-        );
-      },
-    }),
-  );
-
-  app.useGlobalFilters(new HttpExceptionFilter());
-
-  const userService = app.get(UserService);
-  const userEmail = configService.get<string>('defaultAdmin.email');
-  const existingUser = await userService.findByEmail(userEmail);
-
-  if (!existingUser) {
-    const userDTO: CreateUserDto = {
-      name: configService.get<string>('defaultAdmin.name'),
-      rut: configService.get<string>('defaultAdmin.rut'),
-      email: userEmail,
-      password: configService.get<string>('defaultAdmin.password'),
-      role: Role.ADMIN,
-    };
-
-    const admin = await userService.create(userDTO);
-    console.log('Inserted admin:', admin);
+    await app.listen(3000);
+    cachedServer = app.getHttpServer();
   }
-
-  await app.init();  // Cambia `listen` por `init` para funciones serverless
+  return cachedServer;
 }
 
-bootstrap();
-
-export const handler = serverless(expressApp);
+module.exports.handler = async (event, context) => {
+  const server = await bootstrap();
+  // Aquí puedes añadir el código para manejar las solicitudes y respuestas
+  // Esto puede variar dependiendo de cómo quieras manejar las solicitudes
+  return new Promise((resolve, reject) => {
+    server.emit('request', event, {
+      end: (body) => resolve({
+        statusCode: 200,
+        body,
+      }),
+      // Aquí puedes añadir más lógica para manejar las respuestas
+    });
+  });
+};
