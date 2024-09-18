@@ -3,6 +3,6 @@
   command = "npm run build"
 
 [[redirects]]
-  from = "/api/*"
+  from = "/user/*"
   to = "/.netlify/functions/server"
   status = 200
