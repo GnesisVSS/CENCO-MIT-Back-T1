@@ -6,9 +6,14 @@ import { UserService } from './user/user.service';
 import { CreateUserDto } from './user/dto/create-user.dto';
 import { Role } from './user/entities/role.enum';
 import { ConfigService } from '@nestjs/config';
+import * as express from 'express';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+
+  // Acceder a la instancia de Express
+  const expressApp = app.getHttpAdapter().getInstance() as express.Express;
+  expressApp.set('trust proxy', true);
 
   const configService = app.get(ConfigService);
 
@@ -37,8 +42,6 @@ async function bootstrap() {
   app.useGlobalFilters(new HttpExceptionFilter());
 
   const userService = app.get(UserService);
-
-
   const userEmail = configService.get<string>('defaultAdmin.email');
   const existingUser = await userService.findByEmail(userEmail);
 
