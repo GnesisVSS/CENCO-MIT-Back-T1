@@ -1,19 +1,15 @@
-// functions/user.js
+// functions/server.js
 
 const express = require('express');
-const cors = require('cors');
+const serverless = require('serverless-http');
 const { handler } = require('../dist/main'); // Asegúrate de que esta ruta sea correcta
 
 const app = express();
 
-// Configura CORS
-app.use(cors());
-
 // Configura el middleware para manejar todas las rutas
-app.use('/', (req, res, next) => {
-  // Redirige todas las solicitudes a la aplicación NestJS
+app.use((req, res, next) => {
   handler(req, res, next);
 });
 
 // Exporta el handler para Netlify
-module.exports.handler = require('serverless-http')(app);
+module.exports.handler = serverless(app);
