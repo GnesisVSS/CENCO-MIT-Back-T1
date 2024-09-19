@@ -1,35 +1,58 @@
-// Este código es solo un ejemplo. Asegúrate de que tu main.js exporte la función handler correctamente.
-const { NestFactory } = require('@nestjs/core');
-const { AppModule } = require('./app.module');
+// functions/server.js
 
-let cachedServer;
+import { ExpressAdapter } from "@nestjs/platform-express";
+
+const { NestFactory } = require('@nestjs/core');
+const { AppModule } = require('../dist/app.module'); // Ajusta la ruta según sea necesario
+const express = require('express');
+
+let app;
 
 async function bootstrap() {
-  if (!cachedServer) {
-    const app = await NestFactory.create(AppModule);
-    app.enableCors({
-      origin: '*', 
+  if (!app) {
+    const nestApp = await NestFactory.create(AppModule, new ExpressAdapter(express()));
+    nestApp.enableCors({
+      origin: '*', // Ajusta esta URL según tus necesidades
       methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
       credentials: true,
     });
-
-    await app.listen(3000);
-    cachedServer = app.getHttpServer();
+    await nestApp.init();
+    app = nestApp.getHttpAdapter().getInstance(); // Obtener la instancia de Express
   }
-  return cachedServer;
+  return app;
 }
 
-module.exports.handler = async (event, context) => {
+exports.handler = async (event, context) => {
   const server = await bootstrap();
-  // Aquí puedes añadir el código para manejar las solicitudes y respuestas
-  // Esto puede variar dependiendo de cómo quieras manejar las solicitudes
+
   return new Promise((resolve, reject) => {
-    server.emit('request', event, {
+    server.handle({
+      method: event.httpMethod,
+      url: event.path,
+      headers: event.headers,
+      body: event.body,
+      query: event.queryStringParameters,
+    }, {
       end: (body) => resolve({
         statusCode: 200,
+        headers: {
+          'Access-Control-Allow-Origin': '*', // Ajusta según tu necesidad
+          'Content-Type': 'application/json',
+        },
         body,
       }),
-      // Aquí puedes añadir más lógica para manejar las respuestas
+      statusCode: (code) => {
+        return {
+          end: (body) => resolve({
+            statusCode: code,
+            headers: {
+              'Access-Control-Allow-Origin': '*', // Ajusta según tu necesidad
+              'Content-Type': 'application/json',
+            },
+            body,
+          })
+        };
+      },
     });
   });
 };
