@@ -1,9 +1,15 @@
 [build]
-  functions = "functions"
-  command = "npm run build"
+  functions = "functions"  # La carpeta que contiene tus funciones Netlify
 
 [[redirects]]
-  from = "/user/*"
-  to = "/.netlify/functions/server"
+  from = "/api/*"
+  to = "/.netlify/functions/server/:splat"
   status = 200
   force = true
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    Access-Control-Allow-Origin = "*"
+    Access-Control-Allow-Methods = "GET, POST, PUT, DELETE, OPTIONS"
+    Access-Control-Allow-Headers = "Content-Type, Authorization"
