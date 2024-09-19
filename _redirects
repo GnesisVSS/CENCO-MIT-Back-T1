@@ -1,1 +1,1 @@
-/user/*  /.netlify/functions/server/:splat  200
+/user/*  /.netlify/functions/user/:splat  200

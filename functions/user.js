@@ -1,17 +1,19 @@
 // functions/user.js
+
+const express = require('express');
+const cors = require('cors');
 const { handler } = require('../dist/main'); // Asegúrate de que esta ruta sea correcta
 
-module.exports.handler = async (event, context) => {
-  try {
-    const result = await handler(event, context);
-    return {
-      statusCode: 200,
-      body: JSON.stringify(result),
-    };
-  } catch (error) {
-    return {
-      statusCode: 500,
-      body: JSON.stringify({ message: 'Internal Server Error' }),
-    };
-  }
-};
+const app = express();
+
+// Configura CORS
+app.use(cors());
+
+// Configura el middleware para manejar todas las rutas
+app.use('/', (req, res, next) => {
+  // Redirige todas las solicitudes a la aplicación NestJS
+  handler(req, res, next);
+});
+
+// Exporta el handler para Netlify
+module.exports.handler = require('serverless-http')(app);
