@@ -1,58 +1,60 @@
-// functions/server.js
-
-import { ExpressAdapter } from "@nestjs/platform-express";
-
-const { NestFactory } = require('@nestjs/core');
-const { AppModule } = require('../dist/app.module'); // Ajusta la ruta según sea necesario
-const express = require('express');
-
-let app;
+import { NestFactory } from '@nestjs/core';
+import { AppModule } from './app.module';
+import { BadRequestException, ValidationPipe } from '@nestjs/common';
+import { HttpExceptionFilter } from './exceptionFilter/http-exception.filter';
+import { UserService } from './user/user.service';
+import { CreateUserDto } from './user/dto/create-user.dto';
+import { Role } from './user/entities/role.enum';
+import { ConfigService } from '@nestjs/config';
 
 async function bootstrap() {
-  if (!app) {
-    const nestApp = await NestFactory.create(AppModule, new ExpressAdapter(express()));
-    nestApp.enableCors({
-      origin: '*', // Ajusta esta URL según tus necesidades
-      methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
-      credentials: true,
-    });
-    await nestApp.init();
-    app = nestApp.getHttpAdapter().getInstance(); // Obtener la instancia de Express
-  }
-  return app;
-}
+  const app = await NestFactory.create(AppModule);
 
-exports.handler = async (event, context) => {
-  const server = await bootstrap();
+  const configService = app.get(ConfigService);
 
-  return new Promise((resolve, reject) => {
-    server.handle({
-      method: event.httpMethod,
-      url: event.path,
-      headers: event.headers,
-      body: event.body,
-      query: event.queryStringParameters,
-    }, {
-      end: (body) => resolve({
-        statusCode: 200,
-        headers: {
-          'Access-Control-Allow-Origin': '*', // Ajusta según tu necesidad
-          'Content-Type': 'application/json',
-        },
-        body,
-      }),
-      statusCode: (code) => {
-        return {
-          end: (body) => resolve({
-            statusCode: code,
-            headers: {
-              'Access-Control-Allow-Origin': '*', // Ajusta según tu necesidad
-              'Content-Type': 'application/json',
-            },
-            body,
-          })
-        };
-      },
-    });
+  app.enableCors({
+    origin: configService.get<string>('CORS_ORIGIN'),
+    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
+    credentials: true,
   });
-};
+
+  app.useGlobalPipes(
+    new ValidationPipe({
+      whitelist: true,
+      forbidNonWhitelisted: true,
+      transform: true,
+      exceptionFactory: (errors) => {
+        return new BadRequestException(
+          errors.map((error) => ({
+            field: error.property,
+            errors: Object.values(error.constraints),
+          })),
+        );
+      },
+    }),
+  );
+
+  app.useGlobalFilters(new HttpExceptionFilter());
+
+  const userService = app.get(UserService);
+
+
+  const userEmail = configService.get<string>('defaultAdmin.email');
+  const existingUser = await userService.findByEmail(userEmail);
+
+  if (!existingUser) {
+    const userDTO: CreateUserDto = {
+      name: configService.get<string>('defaultAdmin.name'),
+      rut: configService.get<string>('defaultAdmin.rut'),
+      email: userEmail,
+      password: configService.get<string>('defaultAdmin.password'),
+      role: Role.ADMIN,
+    };
+
+    const admin = await userService.create(userDTO);
+    console.log('Inserted admin:', admin);
+  }
+
+  await app.listen(3000);
+}
+bootstrap();
