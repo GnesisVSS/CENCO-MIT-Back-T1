@@ -1,6 +1,4 @@
-
-import { Controller, Get, Post, Body, Patch, Param, Delete, UnauthorizedException, Req, BadRequestException, UsePipes, ValidationPipe, NotFoundException, Query, Res, HttpStatus, HttpCode } from '@nestjs/common';
-
+import { Controller, Get, Post, Body, Patch, Param, Delete, UnauthorizedException, Req, BadRequestException, UsePipes, ValidationPipe, NotFoundException, Query, HttpStatus, HttpCode, HttpException } from '@nestjs/common';
 import { UserService } from './user.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
@@ -11,52 +9,47 @@ import { JwtAuthGuard } from '../guards/jwt-auth.guard';
 import { RolesGuard } from 'src/guards/role.guard';
 import { Roles } from 'src/decorators/has-roles.decorator';
 import { Role } from './entities/role.enum';
-import { find } from 'rxjs';
-import { GetUserDto } from './dto/get-user.dto';
 import { User } from './entities/user.entity';
-
-import { Not } from 'typeorm';
-
 import { SearchUserDto } from './dto/seach-user.dto';
 import { UpdateUserByUserDto } from './dto/update-user-by-user.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
 
-
 @Controller('user')
 export class UserController {
-  constructor(private readonly userService: UserService) { }
+  constructor(private readonly userService: UserService) {}
 
   @Post('signup')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.ADMIN)
   async create(@Body() createUserDto: CreateUserDto, @Req() req: Request): Promise<{ message: string }> {
-    await this.userService.create(createUserDto, req.user);
-    return { message: 'User successfully created' };
+    try {
+      await this.userService.create(createUserDto, req.user);
+      return { message: 'User successfully created' };
+    } catch (error) {
+      throw new HttpException('User creation failed', HttpStatus.BAD_REQUEST);
+    }
   }
 
   @Post('login')
-  @HttpCode(HttpStatus.OK)  //httpStatus.ok to change the default 201 created status in method post
-  // From the body we get the parameters of the login defined in the dto file
+  @HttpCode(HttpStatus.OK)
   async login(@Body() loginDto: LoginDto) {
-    // returns the response from de service
-    return this.userService.login(loginDto)
+    try {
+      return await this.userService.login(loginDto);
+    } catch (error) {
+      throw new UnauthorizedException('Invalid credentials');
+    }
   }
+
   @Post('change-password')
-  @UseGuards(JwtAuthGuard)  // Guard to ensure the user is authenticated
+  @UseGuards(JwtAuthGuard)
   async changePassword(
     @Body() changePasswordDto: ChangePasswordDto,
-    @Req() req: Request,
+    @Req() req: Request & { user: User }
   ): Promise<{ statusCode: number, message: string }> {
-    const userId = req.user.sub;  
-
+    const userId = req.user.sub;
     const result = await this.userService.updatePassword(userId, changePasswordDto.currentPassword, changePasswordDto.newPassword);
-
-    return {
-      statusCode: result.statusCode,
-      message: result.message,
-    };
+    return { statusCode: result.statusCode, message: result.message };
   }
-
 
   @Get('profile')
   @UseGuards(JwtAuthGuard)
@@ -71,52 +64,43 @@ export class UserController {
   @Get('all')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.ADMIN)
-  findAll(@Req() req: Request & { user: User }) {
-
+  findAll() {
     return this.userService.findAll();
   }
 
-  @Roles(Role.ADMIN)
-  @UseGuards(
-    JwtAuthGuard,
-    RolesGuard
-  )
   @Patch('update')
+  @Roles(Role.ADMIN)
+  @UseGuards(JwtAuthGuard, RolesGuard)
   update(@Query('id') id: number, @Body() updateUserDto: UpdateUserDto) {
     return this.userService.update(id, updateUserDto);
   }
 
-  @UseGuards(
-    JwtAuthGuard,
-    RolesGuard
-  )
   @Patch('updateByUser')
-  async updateByUser(@Req() req: Request & { user: User }, @Body() UpdateUserByUserDto: UpdateUserByUserDto) {
+  @UseGuards(JwtAuthGuard)
+  async updateByUser(@Req() req: Request & { user: User }, @Body() updateUserByUserDto: UpdateUserByUserDto) {
     const userId = req.user.sub;
     if (!userId) {
       throw new NotFoundException('User ID not found in the request');
     }
-    return this.userService.updateByUser(userId, UpdateUserByUserDto);
+    return this.userService.updateByUser(userId, updateUserByUserDto);
   }
 
   @Delete('delete/:id')
-  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.ADMIN)
+  @UseGuards(JwtAuthGuard, RolesGuard)
   async remove(@Param('id') id: number) {
-    return await this.userService.delete(id);
+    try {
+      return await this.userService.delete(id);
+    } catch (error) {
+      throw new HttpException('User deletion failed', HttpStatus.BAD_REQUEST);
+    }
   }
 
-  @Roles(Role.ADMIN)
-  @UseGuards(
-    JwtAuthGuard,
-    RolesGuard
-  )
   @Get('search')
+  @Roles(Role.ADMIN)
+  @UseGuards(JwtAuthGuard, RolesGuard)
   async searchUsers(@Query() query: SearchUserDto) {
     const users = await this.userService.searchUsers(query);
-    return {
-      message: `Found ${users.length} users`,
-      data: { users },
-    };
+    return { message: `Found ${users.length} users`, data: { users } };
   }
 }
