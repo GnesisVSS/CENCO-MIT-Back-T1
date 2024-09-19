@@ -2,7 +2,7 @@
   functions = "functions"  # La carpeta que contiene tus funciones Netlify
 
 [[redirects]]
-  from = "/api/*"
+  from = "/user/*"
   to = "/.netlify/functions/server/:splat"
   status = 200
   force = true
