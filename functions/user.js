@@ -1,6 +1,6 @@
 const serverless = require('serverless-http');
 const { NestFactory } = require('@nestjs/core');
-const { AppModule } = require('../dist/app.module'); // Asegúrate de la ruta correcta a tu módulo
+const { AppModule } = require('../dist/app.module'); // Asegúrate de la ruta correcta
 
 let server;
 
@@ -15,5 +15,12 @@ const createServer = async () => {
 
 module.exports.handler = async (event, context) => {
   const app = await createServer();
-  return app(event, context);
+  const result = await app(event, context);
+
+  // Añadir cabeceras CORS
+  result.headers['Access-Control-Allow-Origin'] = '*';
+  result.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS';
+  result.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization';
+
+  return result;
 };
