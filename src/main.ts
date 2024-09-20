@@ -14,7 +14,15 @@ async function bootstrap() {
   // Acceder a la instancia de Express
   const expressApp = app.getHttpAdapter().getInstance() as express.Express;
   expressApp.enable('trust proxy');
-
+  expressApp.use((req, res, next) => {
+    if (req.method === 'OPTIONS') {
+      res.header('Access-Control-Allow-Origin', '*');
+      res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+      res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+      return res.sendStatus(200); // Respondemos 200 OK para OPTIONS
+    }
+    next();
+  });
   const configService = app.get(ConfigService);
 
   app.enableCors({
