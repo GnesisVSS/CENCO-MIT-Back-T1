@@ -13,7 +13,7 @@ async function bootstrap() {
 
   // Acceder a la instancia de Express
   const expressApp = app.getHttpAdapter().getInstance() as express.Express;
-  expressApp.set('trust proxy', true);
+  expressApp.enable('trust proxy');
 
   const configService = app.get(ConfigService);
 
@@ -58,6 +58,6 @@ async function bootstrap() {
     console.log('Inserted admin:', admin);
   }
 
-  await app.listen(3000);
+  await app.listen(process.env.PORT || 3000);
 }
 bootstrap();

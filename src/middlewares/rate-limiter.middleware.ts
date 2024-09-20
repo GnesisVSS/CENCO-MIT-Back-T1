@@ -13,16 +13,19 @@ export class RateLimiterMiddleware implements NestMiddleware {
         windowMs: this.configService.get<number>('rateLimit.signup.windowMs'),
         max: this.configService.get<number>('rateLimit.signup.maxRequests'),
         message: 'Too many requests for signing up, please try again later.',
+        validate: { ip: false }
       }),
       '/user/login': rateLimit({
         windowMs: this.configService.get<number>('rateLimit.login.windowMs'),
         max: this.configService.get<number>('rateLimit.login.maxRequests'),
         message: 'Too many login attempts, please try again later.',
+        validate: { ip: false }
       }),
       'default': rateLimit({
         windowMs: this.configService.get<number>('rateLimit.general.windowMs'),
         max: this.configService.get<number>('rateLimit.general.maxRequests'),
         message: 'Too many requests, please try again later.',
+        validate: { ip: false }
       }),
     };
   }

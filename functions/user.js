@@ -7,6 +7,10 @@ let server;
 const createServer = async () => {
   if (!server) {
     const app = await NestFactory.create(AppModule);
+    
+    const expressApp = app.getHttpAdapter().getInstance();
+    expressApp.set('trust proxy', 1); 
+
     await app.init();
     server = serverless(app.getHttpAdapter().getInstance()); // Para obtener la instancia de Express
   }
