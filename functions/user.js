@@ -23,7 +23,7 @@ module.exports.handler = async (event, context) => {
 
   // Añadir cabeceras CORS
   result.headers['Access-Control-Allow-Origin'] = '*';
-  result.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS';
+  result.headers['Access-Control-Allow-Methods'] = 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS';
   result.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization';
 
   return result;
